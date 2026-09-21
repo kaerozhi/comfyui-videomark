@@ -1,11 +1,21 @@
 [project]
 name = "comfyui-videomark"
-description = "ComfyUI 视频 / 图片水印节点：四角固定 / 居中低透明 / 浮动 / 平铺 / 片头片尾版权页；单张照片直接用 Overlay，不做文件夹批处理。文字可手填也可从外部接入（text_in，用来做参数标注）。内置可视化面板（上传 logo、图形化选样式、描边阴影微调）与中英文界面"
+description = "Watermark nodes for video and image workflows: corner / center / floating / tiled placement, animated intro and outro copyright cards, text and PNG-logo overlays with adjustable outline and drop shadow, a visual panel for picking styles and uploading a logo, and English/Chinese UI. Works on any IMAGE batch, so it fits MiniMax H3 / Wan / LTX / Hunyuan / VHS / AnimateDiff frame pipelines. No extra dependencies beyond ComfyUI's bundled torch / numpy / Pillow."
 version = "1.4.0"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
 dependencies = []
-license = {text = "MIT"}
+classifiers = [
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Repository = "https://github.com/kaerozhi/comfyui-videomark"
+Documentation = "https://github.com/kaerozhi/comfyui-videomark#readme"
+"Bug Tracker" = "https://github.com/kaerozhi/comfyui-videomark/issues"
 
 [tool.comfy]
-PublisherId = ""
-DisplayName = "comfyui-videomark（视频水印）"
-Icon = ""
+PublisherId = "kaerozhi"
+DisplayName = "ComfyUI VideoMark（视频水印）"
+Icon = "https://raw.githubusercontent.com/kaerozhi/comfyui-videomark/main/icon.png"
+Banner = "https://raw.githubusercontent.com/kaerozhi/comfyui-videomark/main/banner.png"
