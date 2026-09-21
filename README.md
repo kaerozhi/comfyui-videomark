@@ -565,7 +565,7 @@ comfyui-videomark/
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone <本仓库地址>
+git clone https://github.com/kaerozhi/comfyui-videomark.git
 ```
 
 或者直接把 `comfyui-videomark/` 整个目录丢进 `ComfyUI/custom_nodes/`。
