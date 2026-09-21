@@ -1,0 +1,11 @@
+[project]
+name = "comfyui-videomark"
+description = "ComfyUI 视频 / 图片水印节点：四角固定 / 居中低透明 / 浮动 / 平铺 / 片头片尾版权页；单张照片直接用 Overlay，不做文件夹批处理。文字可手填也可从外部接入（text_in，用来做参数标注）。内置可视化面板（上传 logo、图形化选样式、描边阴影微调）与中英文界面"
+version = "1.4.0"
+dependencies = []
+license = {text = "MIT"}
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "comfyui-videomark（视频水印）"
+Icon = ""

@@ -1,0 +1,11 @@
+# 行尾统一为 LF（Windows 上 core.autocrlf 默认会把工作区文件改成 CRLF，
+# 对跨平台协作和脚本里的字符串处理都是噪音，这里钉死）
+* text=auto eol=lf
+
+# 二进制文件不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary

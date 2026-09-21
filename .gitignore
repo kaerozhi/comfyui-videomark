@@ -1,0 +1,17 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv*/
+
+# ---- 自测临时产物（preview/ 是随包发布的样张，不忽略）----
+/outputs/
+/preview/*.tmp
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
