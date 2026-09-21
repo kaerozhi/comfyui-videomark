@@ -563,6 +563,16 @@ comfyui-videomark/
 
 ## 安装
 
+**方式一：Comfy Registry**
+
+```bash
+comfy node install comfyui-videomark
+```
+
+或直接到 [registry.comfy.org/nodes/comfyui-videomark](https://registry.comfy.org/nodes/comfyui-videomark) 点安装。
+
+**方式二：手动 clone**
+
 ```bash
 cd ComfyUI/custom_nodes
 git clone https://github.com/kaerozhi/comfyui-videomark.git
