@@ -1,0 +1,6 @@
+# 只用于开发与文档展示，不打进 Registry 安装包
+# （Registry 打包默认包含 git 跟踪的所有文件，这里做减法）
+tools/
+preview/
+icon.png
+banner.png
