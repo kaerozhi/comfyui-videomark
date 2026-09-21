@@ -16,6 +16,31 @@ MiniMax H3、Wan、LTX、Hunyuan、VHS、AnimateDiff 这些出帧流程都能直
 
 ---
 
+## 效果
+
+**样式预设 —— 同一个镜头上的四种可见度**（右下角局部放大 2.2 倍）
+
+![样式对比 · 亮底](preview/09_style_compare.png)
+
+![样式对比 · 暗底](preview/09b_style_compare_dark.png)
+
+**描边不透明度 0 / 0.3 / 0.6 / 1.0** —— 觉得描边太重，先降这个
+
+![描边不透明度梯度 · 亮底](preview/10_stroke_opacity.png)
+
+**居中低透明** 与 **平铺**（最容易被忽略的两种方式）
+
+<img src="preview/02_center_lowopacity.png" width="400" alt="居中低透明"> <img src="preview/04_tile.png" width="400" alt="平铺">
+
+**片头 / 片尾版权页** 与 **logo + 文字组合**
+
+<img src="preview/06_title_card.png" width="400" alt="片头版权页"> <img src="preview/05_logo_combo.png" width="400" alt="logo 与文字组合">
+
+> 四角定位（四个角各一张）、浮动轨迹、完整时间轴、文字细节等更多样张，
+> 见 [`preview/`](preview) 目录 —— 下面「自测工具 → 样张看什么」有逐张说明。
+
+---
+
 ## 可视化面板
 
 节点内置一套面板，不用记参数名：
@@ -492,10 +517,14 @@ python tools\guardcheck.py    :: 变异测试 —— 故意改坏代码，验上
 
 | 样张 | 看什么 |
 |---|---|
-| `01_corner.png` | 四角定位（soft 默认样式） |
-| `09_style_compare.png` / `09b_..._dark.png` | 四种样式在亮底 / 暗底上的对比 |
-| `10_stroke_opacity.png` / `10b_..._dark.png` | 描边透明度 0 / 0.3 / 0.6 / 1.0 的梯度 |
-| `07_timeline.png` | 片头卡片 → 正片 → 片尾卡片 的完整时间轴 |
+| [`01_corner.png`](preview/01_corner.png) | 四角定位（soft 默认样式） |
+| [`02_center_lowopacity.png`](preview/02_center_lowopacity.png) / [`04_tile.png`](preview/04_tile.png) | 居中低透明 / 平铺 |
+| [`03_floating_*.png`](preview) | 五条浮动轨迹（diagonal / horizontal / vertical / circle / random） |
+| [`05_logo_combo.png`](preview/05_logo_combo.png) / [`06_title_card.png`](preview/06_title_card.png) | logo + 文字组合 / 片头版权页 |
+| [`07_timeline.png`](preview/07_timeline.png) | 片头卡片 → 正片 → 片尾卡片 的完整时间轴 |
+| [`08_text_detail.png`](preview/08_text_detail.png) | 文字与 logo 的渲染细节 |
+| [`09_style_compare.png`](preview/09_style_compare.png) / [`09b_..._dark.png`](preview/09b_style_compare_dark.png) | 四种样式在亮底 / 暗底上的对比 |
+| [`10_stroke_opacity.png`](preview/10_stroke_opacity.png) / [`10b_..._dark.png`](preview/10b_stroke_opacity_dark.png) | 描边透明度 0 / 0.3 / 0.6 / 1.0 的梯度 |
 
 样式相关的样张是**局部放大 2.2 倍**的：整帧缩到一行里，描边和投影的差别根本看不出来。
 
