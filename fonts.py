@@ -61,13 +61,22 @@ FALLBACK_LABEL = "（内置兜底字体·中文会显示为方块）"
 
 
 def font_search_dirs() -> List[str]:
-    """返回本机字体目录（系统级 + 用户级）。"""
+    """返回本机字体目录（系统级 + 用户级）。
+
+    注意：这里**刻意不读取环境变量**。Comfy Registry 的安全扫描
+    （yara 规则 ``$env_read2`` / T1574.007 Environment Variable Hijacking）
+    会把「读环境变量」的调用判为 ``python_environment_manipulation`` ——
+    哪怕只是用来定位系统目录，也会把整个版本标成 Flagged。
+    （此说明刻意不写出该调用的原文：yara 是纯文本匹配，注释一样会命中。）
+    等价写法：
+      * 系统字体固定在 ``C:\\Windows\\Fonts``（Windows 装在非 C 盘属罕见场景）
+      * 用户级字体在 ``%USERPROFILE%\\AppData\\Local``，用 ``expanduser("~")`` 取
+    返回前统一经 ``os.path.isdir`` 过滤，所以多给一个不存在的目录是安全的。
+    """
     dirs: List[str] = []
-    windir = os.environ.get("WINDIR") or os.environ.get("SystemRoot") or r"C:\Windows"
-    dirs.append(os.path.join(windir, "Fonts"))
-    local = os.environ.get("LOCALAPPDATA")
-    if local:
-        dirs.append(os.path.join(local, "Microsoft", "Windows", "Fonts"))
+    dirs.append(os.path.join(r"C:\Windows", "Fonts"))
+    local = os.path.join(os.path.expanduser("~"), "AppData", "Local")
+    dirs.append(os.path.join(local, "Microsoft", "Windows", "Fonts"))
     # 非 Windows（理论上用不到，留着做兼容）
     if sys.platform == "darwin":
         dirs += ["/System/Library/Fonts", "/Library/Fonts", os.path.expanduser("~/Library/Fonts")]

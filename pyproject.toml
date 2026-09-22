@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-videomark"
 description = "Watermark nodes for video and image workflows: corner / center / floating / tiled placement, animated intro and outro copyright cards, text and PNG-logo overlays with adjustable outline and drop shadow, a visual panel for picking styles and uploading a logo, and English/Chinese UI. Works on any IMAGE batch, so it fits MiniMax H3 / Wan / LTX / Hunyuan / VHS / AnimateDiff frame pipelines. No extra dependencies beyond ComfyUI's bundled torch / numpy / Pillow."
-version = "1.4.0"
+version = "1.4.1"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = []

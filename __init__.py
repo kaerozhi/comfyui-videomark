@@ -23,7 +23,7 @@ comfyui-videomark
 
 from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 # ComfyUI 会自动把该目录下的 .js 当作前端扩展加载
 WEB_DIRECTORY = "./web"
