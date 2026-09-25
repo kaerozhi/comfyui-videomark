@@ -532,9 +532,9 @@ def t_text_in():
     assert N._resolve_text("面板", 123) == "123"          # 非字符串也收
     assert N._resolve_text("", "外部") == "外部"
     assert N._resolve_text("面板", "") == "面板"
-    assert N._text_source("外部") == "外部输入"
-    assert N._text_source("") == "面板文字"
-    assert N._text_source(None) == "面板文字"
+    assert N._text_source("外部") == "external"
+    assert N._text_source("") == "panel"
+    assert N._text_source(None) == "panel"
 
     # ---- 声明层：三个节点都要有，且必须是 forceInput（否则会占控件槽位） ----
     for cls in (N.VideoMarkOverlay, N.VideoMarkTitle, getattr(N, "VideoMarkVideo", None)):

@@ -23,7 +23,7 @@ comfyui-videomark
 
 from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 
 # ComfyUI 会自动把该目录下的 .js 当作前端扩展加载
 WEB_DIRECTORY = "./web"
@@ -41,9 +41,9 @@ def _register_web_api() -> None:
     try:
         from . import webapi
         if webapi.register_routes():
-            print("[VideoMark] 面板接口已就绪：/videomark/meta")
+            print("[VideoMark] panel API ready: /videomark/meta")
     except Exception as e:                                  # noqa: BLE001
-        print(f"[VideoMark] 面板接口注册失败（节点不受影响）：{type(e).__name__}: {e}")
+        print(f"[VideoMark] panel API registration failed (node unaffected): {type(e).__name__}: {e}")
 
 
 _register_web_api()

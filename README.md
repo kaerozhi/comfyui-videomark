@@ -224,7 +224,7 @@ plain  →  soft  →  outline  →  outline_shadow
 | `use_shadow` / `shadow_color` | 开 / `#000000` | 投影开关与颜色（`manual` 下才生效） |
 | `shadow_opacity` / `shadow_offset` / `shadow_blur` | `0.40` / 5 / 8 | 投影强度、偏移、模糊（`manual` 下才生效） |
 | `angle` | 0 | 整体旋转。平铺配 -20~-30 度最难抹 |
-| `font` / `font_file` | 微软雅黑 / 空 | 下拉选字体；`font_file` 填绝对路径可覆盖 |
+| `font` / `font_file` | Microsoft YaHei / 空 | 下拉选字体（`ComfyUI/input/fonts/` 里放的字体会自动进列表）；`font_file` 填 input 目录内的相对路径可覆盖 |
 | `float_path` | `diagonal` | 浮动轨迹：`diagonal` / `horizontal` / `vertical` / `circle` / `random` |
 | `float_cycles` | 1.0 | 浮动模式走完的来回圈数；`random` 下表示位置切换次数 |
 | `seed` | 0 | 仅 `random` 轨迹用 |
@@ -321,8 +321,10 @@ VideoMark Title 的 `audio` 输出接回合成节点，加了片头音画也不�
 
 ## 已知坑
 
-1. **字体缺字形**：`黑体（simhei）` 没有 `©` 字形，用它会渲染成方框。含 `©` 的文字建议用
-   **微软雅黑 / 宋体 / 楷体**。自己的手写体、商用字体走 `font_file` 填绝对路径。
+1. **字体缺字形**：`SimHei` 没有 `©` 字形，用它会渲染成方框。含 `©` 的文字建议用
+   **Microsoft YaHei / SimSun / KaiTi**。想用自己的手写体、商用字体，把字体文件放进
+   `ComfyUI/input/fonts/`，它会自动出现在字体下拉框里。（`font_file` 只接受 input 目录内的
+   相对路径 —— 绝对路径和 `..` 会被拒绝，这是为了不让这个参数变成读任意文件的入口。）
 2. **`fps` 必须对齐**：Title 节点靠 `秒数 × fps` 算帧数，填错会让卡片时长不对。
 3. **`margin` 是像素**：736×992 用 24~40，1080p 用 36~64。换分辨率时记得看一眼。
 4. **`scale` 是百分比**：这个是相对量，换分辨率不用改。

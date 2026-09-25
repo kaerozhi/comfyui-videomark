@@ -42,11 +42,11 @@ import torch
 try:
     from . import logofile as LF
     from . import render as R
-    from .fonts import default_font_label, font_choices, resolve_font
+    from .fonts import FALLBACK_LABEL, default_font_label, font_choices, resolve_font
 except ImportError:                                       # 被当成顶层模块加载时
     import logofile as LF                                 # type: ignore[no-redef]
     import render as R                                    # type: ignore[no-redef]
-    from fonts import default_font_label, font_choices, resolve_font  # type: ignore[no-redef]
+    from fonts import FALLBACK_LABEL, default_font_label, font_choices, resolve_font  # type: ignore[no-redef]
 
 CATEGORY = "VideoMark"
 
@@ -79,7 +79,7 @@ def _font_widgets() -> dict:
     try:
         choices = font_choices()
     except Exception:                                     # noqa: BLE001
-        choices = ["（内置兜底字体·中文会显示为方块）"]
+        choices = [FALLBACK_LABEL]
     try:
         default = default_font_label()
     except Exception:                                     # noqa: BLE001
@@ -87,14 +87,16 @@ def _font_widgets() -> dict:
     return {
         "font": (choices, {
             "default": default,
-            "tooltip": "中文字体。列表按「中文优先」排序（微软雅黑 / 黑体 / 宋体 / 楷体…）。\n"
-                       "想用列表外的字体（手写体、商用字体），把下面 font_file 填成绝对路径即可，它会覆盖这里。\n"
-                       "注意：黑体（simhei）没有 © 字形，用它会显示成方框 —— 含 © 的文字请用微软雅黑 / 宋体 / 楷体。",
+            "tooltip": "Font. Sorted CJK-first on Windows (Microsoft YaHei / SimHei / SimSun / KaiTi ...).\n"
+                       "Fonts you drop into ComfyUI's input/fonts folder show up in this list too.\n"
+                       "Note: SimHei has no glyph for © - it renders as a box. Use Microsoft YaHei / SimSun / KaiTi "
+                       "for text containing ©.",
         }),
         "font_file": ("STRING", {
             "default": "",
-            "tooltip": "自定义字体文件绝对路径，例：D:/Fonts/思源黑体.otf\n"
-                       "填写且文件存在时，忽略上面的字体下拉框。",
+            "tooltip": "Font file path relative to ComfyUI's input folder, e.g. fonts/MyFont.otf.\n"
+                       "When set and the file exists it overrides the font list above.\n"
+                       "Absolute paths and '..' are rejected.",
         }),
     }
 
@@ -103,10 +105,10 @@ def _font_widgets() -> dict:
 LOGO_FILE_WIDGET = {
     "logo_file": ("STRING", {
         "default": "",
-        "tooltip": "logo 文件名（相对 ComfyUI 的 input 目录）。\n"
-                   "在可视化面板里点「上传 Logo」会自动填这一项，通常不用手改；\n"
-                   "也可以手动填一个已经放进 input 目录的文件，例：logo/kaero.png\n"
-                   "注意：若 logo 输入口接了线，以连线的图为准，这里会被忽略。",
+        "tooltip": "Logo file name, relative to ComfyUI's input folder.\n"
+                   "Clicking 'Upload logo' in the visual panel fills this in; you normally never edit it by hand.\n"
+                   "You can also type the name of a file already placed in the input folder, e.g. logo/kaero.png.\n"
+                   "Note: a linked IMAGE on the logo input always wins over this.",
     }),
 }
 
@@ -146,155 +148,158 @@ def _watermark_widgets() -> dict:
     d = {
         "mode": (R.MODES, {
             "default": "corner",
-            "tooltip": "水印方式：\n"
-                       "corner   固定贴四角之一（最不挡画面，日常首选）\n"
-                       "center   画面正中，建议 opacity 压到 0.15~0.25\n"
-                       "floating 在安全区内游走 / 周期跳位（防盗最强，观感最差）\n"
-                       "tile     全画面平铺，最难裁掉抹除",
+            "tooltip": "Watermark mode:\n"
+                       "corner   fixed in one corner (least intrusive, best default)\n"
+                       "center   dead centre - keep opacity around 0.15~0.25\n"
+                       "floating wanders inside the safe area (hardest to crop out, worst to watch)\n"
+                       "tile     repeated across the whole frame - hardest to remove in post",
         }),
         "position": (R.POSITIONS, {
             "default": "bottom_right",
-            "tooltip": "corner 模式贴哪个角。\n"
-                       "右下角最不挡主体；若右下角有平台 UI 遮挡（点赞/分享按钮），改用左上角。",
+            "tooltip": "Which corner to use in corner mode.\n"
+                       "Bottom-right blocks the least; switch to top-left if the platform overlays its own UI "
+                       "(like/share buttons) there.",
         }),
         "text": ("STRING", {
             "default": "© 2026 kaero",
             "multiline": True,
-            "tooltip": "水印文字，支持多行（直接回车换行）。",
+            "tooltip": "Watermark text. Multiple lines supported - just press Enter.",
         }),
         "opacity": ("FLOAT", {
             "default": 0.85, "min": 0.02, "max": 1.0, "step": 0.01,
-            "tooltip": "不透明度。参考值：\n"
-                       "四角固定 0.75~1.0（要看得清）\n"
-                       "居中 / 平铺 0.12~0.22（再高就影响观赏）\n"
-                       "浮动 0.25~0.45（太低会被压暗后抹掉）",
+            "tooltip": "Overall opacity. Reference values:\n"
+                       "corner 0.75~1.0 (needs to stay legible)\n"
+                       "centre / tile 0.12~0.22 (higher starts to hurt viewing)\n"
+                       "floating 0.25~0.45 (too low gets erased after compression)",
         }),
         "scale": ("FLOAT", {
             "default": 20.0, "min": 1.0, "max": 100.0, "step": 0.5,
-            "tooltip": "水印宽度占画面宽度的百分比。换分辨率不用改，会自动等比换算。\n"
-                       "文字水印 15~25 比较舒服；logo 水印 8~18。",
+            "tooltip": "Watermark width as a percentage of the frame width. Resolution independent - you never retune it.\n"
+                       "15~25 for text, 8~18 for a logo.",
         }),
         "margin": ("INT", {
             "default": 32, "min": 0, "max": 600, "step": 1,
-            "tooltip": "距画面边缘的安全边距（像素）。浮动 / 平铺同样受它约束，图章不会被切掉。\n"
-                       "参考：736×992 用 24~40；1080p 用 36~64。",
+            "tooltip": "Safe margin from the frame edge, in pixels. Floating and tiled stamps respect it too, "
+                       "so nothing ever gets clipped.\n"
+                       "24~40 for 736x992; 36~64 for 1080p.",
         }),
         "use_text": ("BOOLEAN", {
             "default": True,
-            "tooltip": "关掉可临时只留 logo，不必删掉文字内容。",
+            "tooltip": "Turn off to show the logo only without deleting the text.",
         }),
         "use_logo": ("BOOLEAN", {
             "default": False,
-            "tooltip": "打开才会绘制 logo。\n"
-                       "图片来源二选一：面板里「上传 Logo」（存成上面的 logo_file），\n"
-                       "或者把 LoadImage 的 IMAGE 接到 logo 输入口（接线优先）。",
+            "tooltip": "Master switch for drawing the logo.\n"
+                       "Source is either the panel upload (stored as logo_file above)\n"
+                       "or an IMAGE linked to the logo input - the link wins.",
         }),
         "layout": (R.LAYOUTS, {
             "default": "vertical",
-            "tooltip": "logo 与文字同时存在时的排布：vertical 上下排（logo 在上），horizontal 左右排（logo 在左）。",
+            "tooltip": "How logo and text stack when both are present: vertical (logo on top) or horizontal (logo on the left).",
         }),
         "color": ("STRING", {
             "default": "#FFFFFF",
-            "tooltip": "文字颜色。支持 #RRGGBB / #RGB / r,g,b / 英文颜色名。",
+            "tooltip": "Text colour. Accepts #RRGGBB / #RGB / r,g,b / a colour name.",
         }),
         # ---- 样式组：先由 style 一键定调，想逐项手调就切到 manual ----
         "style": (R.STYLES, {
             "default": "soft",
-            "tooltip": "水印样式预设 —— 一键换整套描边 / 投影参数：\n"
-                       "soft           描边 + 投影，两者都淡（默认）\n"
-                       "               明暗背景都读得清，又不像实心描边那样抢画面\n"
-                       "plain          两个都关 —— 最不干扰画面，但亮背景上可能糊掉\n"
-                       "outline        只留实心描边 —— 画面明暗变化剧烈时才需要\n"
-                       "outline_shadow 描边 + 投影都拉满 —— 最清楚，同时也最显眼\n"
-                       "manual         不用预设，完全按下面四个控件的数值来\n"
-                       "注意：选预设时下面的描边/投影数值会被预设覆盖，要自己调就选 manual。",
+            "tooltip": "Style preset - one click swaps the whole stroke / shadow set:\n"
+                       "soft           both on but subtle (default)\n"
+                       "               readable on light and dark footage, without grabbing attention\n"
+                       "plain          both off - cleanest, but may vanish on bright backgrounds\n"
+                       "outline        solid stroke only - only needed when contrast swings hard\n"
+                       "outline_shadow both maxed - most legible, also most noticeable\n"
+                       "manual         ignore presets, use the four controls below\n"
+                       "Note: presets override the stroke / shadow values below - pick manual to tune them yourself.",
         }),
         "use_stroke": ("BOOLEAN", {
             "default": True,
-            "tooltip": "描边开关（仅 style=manual 生效，其余预设会接管）。\n"
-                       "描边是沿文字外圈描的一圈边，在明暗变化大的镜头上比字本身还显眼 ——\n"
-                       "觉得水印太重，优先降 stroke_opacity，而不是直接关掉。",
+            "tooltip": "Stroke switch (only read when style=manual; presets take over otherwise).\n"
+                       "A stroke rings the glyphs and reads louder than the text itself on high-contrast shots -\n"
+                       "if the watermark feels heavy, lower stroke_opacity before turning it off.",
         }),
         "stroke_width": ("INT", {
             "default": 3, "min": 0, "max": 24, "step": 1,
-            "tooltip": "描边粗细（像素）。只在描边打开时生效。画面明暗变化大时给 2~4 就够。",
+            "tooltip": "Stroke thickness in pixels. Only applies when the stroke is on. 2~4 is plenty.",
         }),
         "stroke_color": ("STRING", {
             "default": "#000000",
-            "tooltip": "描边颜色。",
+            "tooltip": "Stroke colour.",
         }),
         "stroke_opacity": ("FLOAT", {
             "default": 0.55, "min": 0.0, "max": 1.0, "step": 0.01,
-            "tooltip": "描边自身的不透明度 —— 觉得描边太重就先降这个，比直接关掉更保留可读性。\n"
-                       "1.0 = 实心黑边（最显眼）；0.5~0.6 = 柔和一圈（默认）；0 = 等于关掉描边。",
+            "tooltip": "Opacity of the stroke itself - lower this first when the watermark feels heavy; keeps more "
+                       "legibility than switching it off.\n"
+                       "1.0 = solid black outline (loudest); 0.5~0.6 = soft ring (default); 0 = same as off.",
         }),
         "use_shadow": ("BOOLEAN", {
             "default": True,
-            "tooltip": "投影开关（仅 style=manual 生效）。\n"
-                       "投影把轮廓往外晕开一点：读得清，却不像描边那样在画面上糊一圈硬边。\n"
-                       "⚠ 深色投影在夜景 / 黑幕上是隐形的，纯暗调画面请靠描边（或把 shadow_color 调亮）。",
+            "tooltip": "Shadow switch (only read when style=manual).\n"
+                       "A shadow thickens the silhouette without the hard edge a stroke leaves -\n"
+                       "⚠ a dark shadow is invisible on night / black footage - use a stroke there, or lighten shadow_color.",
         }),
         "shadow_color": ("STRING", {
             "default": "#000000",
-            "tooltip": "投影颜色。纯暗调画面里深色投影看不见，可改成 #FFFFFF 之类亮色。",
+            "tooltip": "Shadow colour. Dark shadows disappear on dark footage; use a light colour like #FFFFFF.",
         }),
         "shadow_opacity": ("FLOAT", {
             "default": 0.4, "min": 0.0, "max": 1.0, "step": 0.01,
-            "tooltip": "投影自身的不透明度。0.3~0.5 是「看得见轮廓但不抢眼」的甜区。",
+            "tooltip": "Opacity of the shadow. 0.3~0.5 reads as 'visible outline, not in the way'.",
         }),
         "shadow_offset": ("INT", {
             "default": 5, "min": -80, "max": 80, "step": 1,
-            "tooltip": "投影偏移（像素，向右下为正）。4~8 像自然投影；\n"
-                       "0 则变成四周对称的柔和光晕，观感更轻，贴角时也不占边距。",
+            "tooltip": "Shadow offset in pixels (positive = down-right). 4~8 looks natural;\n"
+                       "0 turns it into a symmetrical soft glow - lighter, and costs no margin in a corner.",
         }),
         "shadow_blur": ("INT", {
             "default": 8, "min": 0, "max": 100, "step": 1,
-            "tooltip": "投影模糊半径（像素）。越大越柔。6~14 自然；0 = 硬边（等于把字复制一份）。",
+            "tooltip": "Shadow blur radius in pixels. Bigger is softer. 6~14 is natural; 0 = a hard duplicate.",
         }),
         "angle": ("FLOAT", {
             "default": 0.0, "min": -180.0, "max": 180.0, "step": 0.5,
-            "tooltip": "水印整体旋转角度。平铺时配 -20~-30 度最难对齐抹除。",
+            "tooltip": "Rotate the whole watermark. For tiled marks, -20~-30 degrees is much harder to align and erase.",
         }),
     }
     d.update(_font_widgets())
     d.update({
         "float_path": (R.FLOAT_PATHS, {
             "default": "diagonal",
-            "tooltip": "floating 模式的活动轨迹：\n"
-                       "diagonal / horizontal / vertical  匀速来回（三角波，端点不减速）\n"
-                       "circle                            椭圆环路\n"
-                       "random                            均匀随机跳位，防盗最强但位置会突变",
+            "tooltip": "Path followed while floating:\n"
+                       "diagonal / horizontal / vertical  constant back-and-forth (triangle wave)\n"
+                       "circle                            elliptical loop\n"
+                       "random                            uniform random jumps - strongest anti-theft, most jarring",
         }),
         "float_cycles": ("FLOAT", {
             "default": 1.0, "min": 0.1, "max": 200.0, "step": 0.1,
-            "tooltip": "floating 模式：整段视频内来回走完的圈数。\n"
-                       "1 = 整段走一个来回（很慢，适合长视频）；4~8 = 明显游走但仍看得清。\n"
-                       "random 轨迹下含义变为「位置切换次数」，建议设成 2×视频秒数（约每 0.5 秒跳一次）。\n"
-                       "单张图片上没有「走」这回事：位置由 seed 定死成一个点，每次跑都一样。",
+            "tooltip": "How many round trips across the whole clip.\n"
+                       "1 = one very slow pass; 4~8 = clearly wandering but still readable.\n"
+                       "For the random path this means 'number of position changes' - try 2x the clip length in seconds.\n"
+                       "A single still has nothing to travel across: the seed pins it to one spot.",
         }),
         "seed": ("INT", {
             "default": 0, "min": 0, "max": 0xFFFFFFFF, "step": 1,
-            "tooltip": "仅 random 轨迹使用，固定后每次生成的位置一致，便于复现。",
+            "tooltip": "Used by the random float path only. Fix it to reproduce the same positions.",
         }),
         "start_pct": ("FLOAT", {
             "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.001,
-            "tooltip": "水印出现的起始位置（占视频总长的比例）。0 = 片头就出现。\n"
-                       "只对多帧序列有意义：单张图片整张算第 0 帧，这一项不影响它。",
+            "tooltip": "Where the watermark starts appearing, as a fraction of total length. 0 = from frame one.\n"
+                       "Only meaningful for multi-frame sequences: a single still counts as frame 0.",
         }),
         "end_pct": ("FLOAT", {
             "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.001,
-            "tooltip": "水印消失的位置（占总长比例）。1 = 一直留到片尾。\n"
-                       "例：0.6 → 1.0 表示只在后 40% 出现。\n"
-                       "只对多帧序列有意义：单张图片整张算第 0 帧，这一项不影响它。",
+            "tooltip": "Where it stops, as a fraction of total length. 1 = stays to the end.\n"
+                       "e.g. 0.6 -> 1.0 shows it only in the last 40%.\n"
+                       "Only meaningful for multi-frame sequences: a single still counts as frame 0.",
         }),
         "fade_frames": ("INT", {
             "default": 0, "min": 0, "max": 240, "step": 1,
-            "tooltip": "出现 / 消失时的淡入淡出帧数，0 = 硬切。\n"
-                       "只对多帧序列有意义：单张图片没有淡入淡出可做，这一项不影响它。",
+            "tooltip": "Fade-in / fade-out length in frames. 0 = hard cut.\n"
+                       "Only meaningful for multi-frame sequences: a single still has nothing to fade.",
         }),
         "tile_gap": ("INT", {
             "default": 90, "min": 0, "max": 1200, "step": 2,
-            "tooltip": "tile 模式下水印之间的间距（像素）。",
+            "tooltip": "Spacing between tiled watermarks, in pixels.",
         }),
     })
     return d
@@ -302,12 +307,12 @@ def _watermark_widgets() -> dict:
 
 _LOGO_LINKS = {
     "logo": ("IMAGE", {
-        "tooltip": "可选。带 alpha 通道的 PNG logo。接上后把 use_logo 打开才会生效。\n"
-                   "透明度优先取 logo_mask；没接 mask 就用图片自带的 alpha 通道。",
+        "tooltip": "Optional. A PNG logo with an alpha channel. Only drawn when use_logo is on.\n"
+                   "Transparency comes from logo_mask first; falls back to the PNG's own alpha.",
     }),
     "logo_mask": ("MASK", {
-        "tooltip": "可选。logo 的透明度遮罩，留空则用 logo 图片自带 alpha。\n"
-                   "ComfyUI 的「加载图像」会把 PNG 透明通道单独输出成 MASK，直接接过来即可。",
+        "tooltip": "Optional. Transparency mask for the logo; falls back to the PNG's own alpha.\n"
+                   "ComfyUI's Load Image outputs a PNG's transparency as a MASK - just wire it in.",
     }),
 }
 
@@ -326,12 +331,12 @@ _LOGO_LINKS = {
 TEXT_IN_LINK = {
     "text_in": ("STRING", {
         "forceInput": True,
-        "tooltip": "可选。从外部接入文字（接上游拼字符串的节点，例如 String Function）。\n"
-                   "接了线且内容非空 → **以连线为准**，面板里手填的文字自动让位；\n"
-                   "断线、或上游传空字符串 → 回落到面板手填的文字。\n"
-                   "典型用法：跑参数对比（侧视图 / 不同分辨率 / 不同 LoRA 强度 / 不同 seed）时，\n"
-                   "把这一轮的参数拼成文字烧进画面，回看结果时一眼就知道是哪一套。\n"
-                   "注意：它只吃「一段字符串」，节点不会替你填任何值 —— 要显示什么就在上游拼什么。",
+        "tooltip": "Optional. Feed the text in from another node (any node that builds a string).\n"
+                   "When connected and non-empty the wired text wins - whatever you typed in the panel is ignored.\n"
+                   "Disconnected, or an empty string upstream, falls back to the panel text.\n"
+                   "Typical use: while comparing parameter variants (resolutions / LoRA strengths / seeds),\n"
+                   "splice this run's parameters into the frame so you can tell at a glance which settings produced it.\n"
+                   "Note: it takes one plain string - nothing is filled in for you, so build the text you want upstream.",
     }),
 }
 
@@ -362,7 +367,7 @@ def _resolve_text(text, text_in) -> str:
 
 def _text_source(text_in) -> str:
     """日志用的来源标记，让人一眼看出这段文字是接进来的还是手填的。"""
-    return "外部输入" if _ext_text(text_in) else "面板文字"
+    return "external" if _ext_text(text_in) else "panel"
 
 
 # =====================================================================
@@ -408,7 +413,7 @@ def _safe_font(font, font_file) -> Tuple[Optional[str], int]:
     try:
         return resolve_font(font or "", font_file or "")
     except Exception as e:                                # noqa: BLE001
-        _log(f"字体解析失败，改用内置兜底字体：{e}")
+        _log(f"font resolution failed, using the built-in fallback: {e}")
         return None, 0
 
 
@@ -424,7 +429,7 @@ def _build_logo(logo, logo_mask, logo_file: str = ""):
         try:
             return R.logo_to_rgba(arr, _first_mask(_to_np(logo_mask)))
         except Exception as e:                            # noqa: BLE001
-            _log(f"连线 logo 解析失败，改用 logo_file：{e}")
+            _log(f"linked logo failed to parse, falling back to logo_file: {e}")
 
     name = (logo_file or "").strip()
     if name:
@@ -432,9 +437,9 @@ def _build_logo(logo, logo_mask, logo_file: str = ""):
             rgba = LF.load_logo_rgba(name)
             if rgba is not None:
                 return rgba
-            _log(f"logo 文件读取失败（已忽略 logo）：{name}")
+            _log(f"logo file could not be read (logo skipped): {name}")
         except Exception as e:                            # noqa: BLE001
-            _log(f"logo 文件读取异常（已忽略 logo）：{type(e).__name__}: {e}")
+            _log(f"logo file raised (logo skipped): {type(e).__name__}: {e}")
     return None
 
 
@@ -463,7 +468,7 @@ def _pad_audio(audio, head_sec: float = 0.0, tail_sec: float = 0.0):
         out["waveform"] = torch.cat(pieces, dim=-1)
         return out
     except Exception as e:                                # noqa: BLE001
-        _log(f"音频补静音失败，原样透传：{e}")
+        _log(f"audio padding failed, passing through unchanged: {e}")
         return audio
 
 
@@ -486,12 +491,12 @@ class VideoMarkOverlay:
     RETURN_NAMES = ("images",)
     FUNCTION = "apply"
     CATEGORY = CATEGORY
-    DESCRIPTION = ("给逐帧图像打水印：四角固定 / 居中低透明 / 浮动 / 平铺。\n"
-                   "视频流程：不绑定任何视频模型，H3、Wan、LTX、VHS 等 IMAGE 批次都能挂。\n"
-                   "单张照片也直接用它 —— 一张图就是长度为 1 的批次，不必另开节点，"
-                   "排版按这张图的宽高实时算。\n"
-                   "批量处理一整包照片请交给专门的批处理工作流，本节点只管水印本身。\n"
-                   "输出是新张量，不会改写上游数据。")
+    DESCRIPTION = ("Burn a watermark into a frame batch: fixed corner / low-opacity centre / floating / tiled.\n"
+                   "Not tied to any video model - any IMAGE batch works (MiniMax H3, Wan, LTX, VHS...).\n"
+                   "A single photo works too: one image is just a batch of length 1, laid out from its own "
+                   "width and height.\n"
+                   "Bulk-processing a folder is a job for a batch workflow; this node only draws the mark.\n"
+                   "Returns a new tensor; upstream data is never modified.")
 
     def apply(self, images, mode="corner", position="bottom_right", text="© 2026 kaero",
               opacity=0.85, scale=20.0, margin=32, use_text=True, use_logo=False,
@@ -537,16 +542,16 @@ class VideoMarkOverlay:
                 fade_frames=int(fade_frames), tile_gap=int(tile_gap),
             )
         except Exception as e:                            # noqa: BLE001
-            _log(f"渲染失败，已原样透传（不中断工作流）：{type(e).__name__}: {e}")
+            _log(f"render failed, passing through unchanged (workflow not interrupted): {type(e).__name__}: {e}")
             return (_to_tensor(np.asarray(arr, dtype=np.float32)),)
 
         if stamp.shape[0] > 2 and stamp.shape[1] > 2:
-            _log(f"Overlay {mode}/{position} · {num_frames} 帧 · {w}×{h} · "
-                 f"图章 {stamp.shape[1]}×{stamp.shape[0]} · 不透明度 {opacity} · "
-                 f"{style}（描边{'开' if draw_stroke else '关'} / 投影{'开' if draw_shadow else '关'}）"
-                 + (f" · 文字{_text_source(text_in)}" if use_text else ""))
+            _log(f"Overlay {mode}/{position} · {num_frames} frames · {w}x{h} · "
+                 f"stamp {stamp.shape[1]}x{stamp.shape[0]} · opacity {opacity} · "
+                 f"{style}(stroke {'on' if draw_stroke else 'off'} / shadow {'on' if draw_shadow else 'off'})"
+                 + (f" · text {_text_source(text_in)}" if use_text else ""))
         else:
-            _log("Overlay 跳过：没有可绘制的内容（文字为空且未启用 logo）")
+            _log("Overlay skipped: nothing to draw (text empty and logo off)")
         return (_to_tensor(out),)
 
 
@@ -563,66 +568,66 @@ class VideoMarkTitle:
             "images": ("IMAGE",),
             "fps": ("FLOAT", {
                 "default": 24.0, "min": 1.0, "max": 240.0, "step": 1.0,
-                "tooltip": "视频帧率，用来把「秒数」换算成帧数。\n"
-                           "必须和最终合成视频的帧率一致，否则时长会不对（H3 常出 24fps）。",
+                "tooltip": "Frame rate, used to convert seconds into a frame count.\n"
+                           "Must match the final clip's frame rate or the card length will be off (H3 usually outputs 24fps).",
             }),
             "where": (["head", "tail", "both"], {
                 "default": "head",
-                "tooltip": "head 只在片头加，tail 只在片尾加，both 两头都加（各占一份 seconds）。",
+                "tooltip": "head = only at the start, tail = only at the end, both = both ends (each gets a full card).",
             }),
             "seconds": ("FLOAT", {
                 "default": 2.0, "min": 0.1, "max": 60.0, "step": 0.1,
-                "tooltip": "卡片时长（秒）。片尾版权声明 2 秒左右比较合适。",
+                "tooltip": "Card duration in seconds. Around 2s works well for a copyright notice.",
             }),
             "text": ("STRING", {
-                "default": "© 2026 kaero\n版权所有 · 禁止转载",
+                "default": "© 2026 kaero\nAll rights reserved",
                 "multiline": True,
-                "tooltip": "卡片文字，支持多行。",
+                "tooltip": "Card text. Multiple lines supported.",
             }),
-            "use_text": ("BOOLEAN", {"default": True, "tooltip": "关掉则只显示 logo。"}),
+            "use_text": ("BOOLEAN", {"default": True, "tooltip": "Turn off to show the logo only."}),
             "bg_color": ("STRING", {
                 "default": "#000000",
-                "tooltip": "卡片底色，默认纯黑。",
+                "tooltip": "Card background colour. Pure black by default.",
             }),
             "use_logo": ("BOOLEAN", {
                 "default": False,
-                "tooltip": "打开才会绘制 logo。图片来源同 Overlay：面板上传，或把 IMAGE 接到 logo 口。",
+                "tooltip": "Master switch for drawing the logo. Same sources as Overlay: panel upload, or a linked IMAGE.",
             }),
             "layout": (R.LAYOUTS, {
                 "default": "vertical",
-                "tooltip": "logo 与文字同时存在时的排布：vertical 上下排（logo 在上），horizontal 左右排（logo 在左）。",
+                "tooltip": "How logo and text stack when both are present: vertical (logo on top) or horizontal (logo on the left).",
             }),
             "logo_scale": ("FLOAT", {
                 "default": 30.0, "min": 1.0, "max": 100.0, "step": 0.5,
-                "tooltip": "logo 宽度占画面宽度的百分比。",
+                "tooltip": "Logo width as a percentage of the frame width.",
             }),
             "text_scale": ("FLOAT", {
                 "default": 24.0, "min": 1.0, "max": 100.0, "step": 0.5,
-                "tooltip": "文字宽度占画面宽度的百分比。中文片尾字幕 20~30 比较大气。",
+                "tooltip": "Text width as a percentage of the frame width. 20~30 reads well for a credit card.",
             }),
-            "text_color": ("STRING", {"default": "#FFFFFF", "tooltip": "卡片文字颜色。"}),
+            "text_color": ("STRING", {"default": "#FFFFFF", "tooltip": "Card text colour."}),
             "text_stroke_width": ("INT", {
                 "default": 0, "min": 0, "max": 24, "step": 1,
-                "tooltip": "文字描边粗细。底色不是纯黑时建议给 2~4 保证可读性。",
+                "tooltip": "Text stroke thickness. Give it 2~4 when the background is not pure black.",
             }),
-            "text_stroke_color": ("STRING", {"default": "#000000", "tooltip": "文字描边颜色。"}),
+            "text_stroke_color": ("STRING", {"default": "#000000", "tooltip": "Card text stroke colour."}),
         }
         widgets.update(_font_widgets())
         widgets.update({
             "fade_frames": ("INT", {
                 "default": 8, "min": 0, "max": 240, "step": 1,
-                "tooltip": "卡片淡入淡出帧数。黑底卡片下视觉上就是文字/logo 渐显渐隐；0 = 硬切。",
+                "tooltip": "Fade-in / fade-out length in frames. On a black card this reads as the text/logo fading; 0 = hard cut.",
             }),
             "pad_audio": ("BOOLEAN", {
                 "default": True,
-                "tooltip": "给音频补等长静音，保证加了片头后音画不错位。\n"
-                           "接音乐轨时务必保持打开。",
+                "tooltip": "Pad the audio with matching silence so adding a head card does not desync A/V.\n"
+                           "Keep this on whenever music is connected.",
             }),
         })
         links = dict(TEXT_IN_LINK)
         links.update(_LOGO_LINKS)
         links["audio"] = ("AUDIO", {
-            "tooltip": "可选。视频音轨。接进来才会做静音补齐，并从这个端口原样输出。",
+            "tooltip": "Optional. Video audio track. Only when connected does the node pad silence and pass it through.",
         })
         return {"required": _with_logo(widgets), "optional": links}
 
@@ -630,11 +635,12 @@ class VideoMarkTitle:
     RETURN_NAMES = ("images", "audio")
     FUNCTION = "apply"
     CATEGORY = CATEGORY
-    DESCRIPTION = ("在片段头尾插入黑幕版权卡片（文字 + logo），可选补齐音频静音以保证音画同步。"
-                   "没接音频时音频输出为空。")
+    DESCRIPTION = ("Insert black copyright cards (text + logo) at the head and/or tail, optionally padding the\n"
+                   "audio with matching silence so A/V stays in sync. "
+                   "Audio output is empty when nothing is connected.")
 
     def apply(self, images, fps=24.0, where="head", seconds=2.0,
-              text="© 2026 kaero\n版权所有 · 禁止转载", use_text=True, bg_color="#000000",
+              text="© 2026 kaero\nAll rights reserved", use_text=True, bg_color="#000000",
               use_logo=False, layout="vertical", logo_scale=30.0, text_scale=24.0,
               text_color="#FFFFFF", text_stroke_width=0, text_stroke_color="#000000",
               font=None, font_file="", fade_frames=8, pad_audio=True,
@@ -663,7 +669,7 @@ class VideoMarkTitle:
                 layout=layout, fade_frames=int(fade_frames),
             )
         except Exception as e:                            # noqa: BLE001
-            _log(f"卡片渲染失败，已原样透传（不中断工作流）：{type(e).__name__}: {e}")
+            _log(f"card render failed, passing through unchanged (workflow not interrupted): {type(e).__name__}: {e}")
             return (_to_tensor(np.asarray(arr, dtype=np.float32)), audio)
 
         head = where in ("head", "both")
@@ -677,10 +683,10 @@ class VideoMarkTitle:
                                    head_sec=float(seconds) if head else 0.0,
                                    tail_sec=float(seconds) if tail else 0.0)
 
-        _log(f"Title {where} · 追加 {count * (2 if where == 'both' else 1)} 帧 · {w}×{h} @ {fps:g}fps "
-             f"→ 总帧数 {out.shape[0]}"
-             + ("（音频已补静音）" if audio is not None and pad_audio else "")
-             + (f" · 文字{_text_source(text_in)}" if use_text else ""))
+        _log(f"Title {where} · added {count * (2 if where == 'both' else 1)} frames · {w}x{h} @ {fps:g}fps "
+             f"-> total {out.shape[0]} frames"
+             + (" (audio padded)" if audio is not None and pad_audio else "")
+             + (f" · text {_text_source(text_in)}" if use_text else ""))
         return (_to_tensor(out), audio_out)
 
 
@@ -698,20 +704,20 @@ if HAS_VIDEO_TYPE:
             widgets.update({
                 "title_mode": (["off", "head", "tail", "both"], {
                     "default": "off",
-                    "tooltip": "片头 / 片尾黑幕版权卡片。off = 不加。",
+                    "tooltip": "Head / tail black copyright card. off = do not add one.",
                 }),
                 "title_seconds": ("FLOAT", {
                     "default": 2.0, "min": 0.1, "max": 60.0, "step": 0.1,
-                    "tooltip": "卡片时长（秒）。帧率取自输入视频，自动换算帧数。",
+                    "tooltip": "Card duration in seconds. Frame rate comes from the input video.",
                 }),
                 "title_text": ("STRING", {
                     "default": "",
                     "multiline": True,
-                    "tooltip": "卡片文字。留空则复用上面的 text。",
+                    "tooltip": "Card text. Leave blank to reuse the watermark text above.",
                 }),
                 "title_bg_color": ("STRING", {
                     "default": "#000000",
-                    "tooltip": "卡片底色。",
+                    "tooltip": "Card background colour.",
                 }),
             })
             return {"required": _with_logo(widgets), "optional": dict(TEXT_IN_LINK, **_LOGO_LINKS)}
@@ -720,8 +726,8 @@ if HAS_VIDEO_TYPE:
         RETURN_NAMES = ("video",)
         FUNCTION = "apply"
         CATEGORY = CATEGORY
-        DESCRIPTION = ("一步到位：对 VIDEO 做画面水印 + 片头片尾卡片，音频自动同步。"
-                       "需要精细控制时，改用 Overlay + Title 两个节点串起来。")
+        DESCRIPTION = ("All-in-one: watermark + head/tail cards on a VIDEO, audio handled for you. "
+                       "Use Overlay + Title when you want finer control.")
 
         def apply(self, video, mode="corner", position="bottom_right", text="© 2026 kaero",
                   opacity=0.85, scale=20.0, margin=32, use_text=True, use_logo=False,
@@ -772,7 +778,7 @@ if HAS_VIDEO_TYPE:
                     fade_frames=int(fade_frames), tile_gap=int(tile_gap),
                 )
             except Exception as e:                        # noqa: BLE001
-                _log(f"渲染失败，已原样透传（不中断工作流）：{type(e).__name__}: {e}")
+                _log(f"render failed, passing through unchanged (workflow not interrupted): {type(e).__name__}: {e}")
                 return (video,)
 
             audio_out = comp.audio
@@ -797,7 +803,7 @@ if HAS_VIDEO_TYPE:
                         fade_frames=int(fade_frames) if int(fade_frames) > 0 else 8,
                     )
                 except Exception as e:                    # noqa: BLE001
-                    _log(f"卡片渲染失败，本节点只输出画面水印：{type(e).__name__}: {e}")
+                    _log(f"card render failed, this node outputs the watermark only: {type(e).__name__}: {e}")
                     card = None
                 if card is not None and card.shape[0] > 0:
                     head = title_mode in ("head", "both")
@@ -817,10 +823,10 @@ if HAS_VIDEO_TYPE:
             if alpha is not None and (added_title > 0 or _is_empty(alpha)):
                 alpha = None
 
-            _log(f"Video {mode}/{position} · {num_frames}→{out.shape[0]} 帧 · {w}×{h} @ {fps:g}fps"
-                 f" · {style}（描边{'开' if draw_stroke else '关'} / 投影{'开' if draw_shadow else '关'}）"
-                 + (f" · 卡片 {title_mode}" if title_mode != "off" else "")
-                 + (f" · 文字{_text_source(text_in)}" if use_text else ""))
+            _log(f"Video {mode}/{position} · {num_frames}->{out.shape[0]} frames · {w}x{h} @ {fps:g}fps"
+                 f" · {style}(stroke {'on' if draw_stroke else 'off'} / shadow {'on' if draw_shadow else 'off'})"
+                 + (f" · card {title_mode}" if title_mode != "off" else "")
+                 + (f" · text {_text_source(text_in)}" if use_text else ""))
 
             new_comp = _VideoComponents(
                 images=_to_tensor(out),
@@ -858,12 +864,12 @@ NODE_CLASS_MAPPINGS = {
     "VideoMarkTitle": VideoMarkTitle,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "VideoMarkOverlay": "VideoMark Overlay（画面水印）",
-    "VideoMarkTitle": "VideoMark Title（片头片尾版权页）",
+    "VideoMarkOverlay": "VideoMark Overlay",
+    "VideoMarkTitle": "VideoMark Title",
 }
 
 if HAS_VIDEO_TYPE:
     NODE_CLASS_MAPPINGS["VideoMarkVideo"] = VideoMarkVideo
-    NODE_DISPLAY_NAME_MAPPINGS["VideoMarkVideo"] = "VideoMark Video（视频一站式）"
+    NODE_DISPLAY_NAME_MAPPINGS["VideoMarkVideo"] = "VideoMark Video"
 else:
-    print(f"[VideoMark] 未能导入 VIDEO 类型，已跳过 VideoMark Video 节点：{_VIDEO_IMPORT_ERROR}")
+    print(f"[VideoMark] VIDEO type unavailable, VideoMark Video node skipped: {_VIDEO_IMPORT_ERROR}")

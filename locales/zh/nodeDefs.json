@@ -92,11 +92,11 @@
       },
       "font": {
         "name": "字体",
-        "tooltip": "中文字体。列表按「中文优先」排序（微软雅黑 / 黑体 / 宋体 / 楷体…）。\n想用列表外的字体（手写体、商用字体），把下面 font_file 填成绝对路径即可，它会覆盖这里。\n注意：黑体（simhei）没有 © 字形，用它会显示成方框 —— 含 © 的文字请用微软雅黑 / 宋体 / 楷体。"
+        "tooltip": "中文字体。列表按「中文优先」排序（Microsoft YaHei / SimHei / SimSun / KaiTi…）。\n自己放进 ComfyUI 的 input/fonts 目录的字体，也会出现在这个列表里。\n注意：SimHei 没有 © 字形，用它会显示成方框 —— 含 © 的文字请用 Microsoft YaHei / SimSun / KaiTi。"
       },
       "font_file": {
         "name": "字体文件",
-        "tooltip": "自定义字体文件绝对路径，例：D:/Fonts/思源黑体.otf\n填写且文件存在时，忽略上面的字体下拉框。"
+        "tooltip": "字体文件路径（相对 ComfyUI 的 input 目录），例：fonts/我的手写体.otf\n填写且文件存在时，覆盖上面的字体下拉框。\n只接受 input 目录内的路径 —— 绝对路径和「..」一律拒绝；想用自己的字体，把文件放进 input/fonts/ 就会自动出现在下拉框里。"
       },
       "float_path": {
         "name": "浮动轨迹",
@@ -210,11 +210,11 @@
       },
       "font": {
         "name": "字体",
-        "tooltip": "中文字体。列表按「中文优先」排序（微软雅黑 / 黑体 / 宋体 / 楷体…）。\n想用列表外的字体（手写体、商用字体），把下面 font_file 填成绝对路径即可，它会覆盖这里。\n注意：黑体（simhei）没有 © 字形，用它会显示成方框 —— 含 © 的文字请用微软雅黑 / 宋体 / 楷体。"
+        "tooltip": "中文字体。列表按「中文优先」排序（Microsoft YaHei / SimHei / SimSun / KaiTi…）。\n自己放进 ComfyUI 的 input/fonts 目录的字体，也会出现在这个列表里。\n注意：SimHei 没有 © 字形，用它会显示成方框 —— 含 © 的文字请用 Microsoft YaHei / SimSun / KaiTi。"
       },
       "font_file": {
         "name": "字体文件",
-        "tooltip": "自定义字体文件绝对路径，例：D:/Fonts/思源黑体.otf\n填写且文件存在时，忽略上面的字体下拉框。"
+        "tooltip": "字体文件路径（相对 ComfyUI 的 input 目录），例：fonts/我的手写体.otf\n填写且文件存在时，覆盖上面的字体下拉框。\n只接受 input 目录内的路径 —— 绝对路径和「..」一律拒绝；想用自己的字体，把文件放进 input/fonts/ 就会自动出现在下拉框里。"
       },
       "fade_frames": {
         "name": "淡入淡出帧数",
@@ -347,11 +347,11 @@
       },
       "font": {
         "name": "字体",
-        "tooltip": "中文字体。列表按「中文优先」排序（微软雅黑 / 黑体 / 宋体 / 楷体…）。\n想用列表外的字体（手写体、商用字体），把下面 font_file 填成绝对路径即可，它会覆盖这里。\n注意：黑体（simhei）没有 © 字形，用它会显示成方框 —— 含 © 的文字请用微软雅黑 / 宋体 / 楷体。"
+        "tooltip": "中文字体。列表按「中文优先」排序（Microsoft YaHei / SimHei / SimSun / KaiTi…）。\n自己放进 ComfyUI 的 input/fonts 目录的字体，也会出现在这个列表里。\n注意：SimHei 没有 © 字形，用它会显示成方框 —— 含 © 的文字请用 Microsoft YaHei / SimSun / KaiTi。"
       },
       "font_file": {
         "name": "字体文件",
-        "tooltip": "自定义字体文件绝对路径，例：D:/Fonts/思源黑体.otf\n填写且文件存在时，忽略上面的字体下拉框。"
+        "tooltip": "字体文件路径（相对 ComfyUI 的 input 目录），例：fonts/我的手写体.otf\n填写且文件存在时，覆盖上面的字体下拉框。\n只接受 input 目录内的路径 —— 绝对路径和「..」一律拒绝；想用自己的字体，把文件放进 input/fonts/ 就会自动出现在下拉框里。"
       },
       "float_path": {
         "name": "浮动轨迹",

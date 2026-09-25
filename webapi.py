@@ -45,13 +45,13 @@ def register_routes() -> bool:
         from aiohttp import web
         from server import PromptServer
     except Exception as e:                                  # noqa: BLE001
-        print(f"[VideoMark] 未注册面板接口（{type(e).__name__}: {e}）；节点功能不受影响")
+        print(f"[VideoMark] panel API not registered ({type(e).__name__}: {e}); the node itself is unaffected")
         return False
 
     server = getattr(PromptServer, "instance", None)
     routes = getattr(server, "routes", None)
     if routes is None:
-        print("[VideoMark] 未注册面板接口（PromptServer 尚未就绪）；节点功能不受影响")
+        print("[VideoMark] panel API not registered (PromptServer not ready yet); the node itself is unaffected")
         return False
 
     @routes.get("/videomark/meta")
