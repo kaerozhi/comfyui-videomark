@@ -437,7 +437,8 @@ def _build_logo(logo, logo_mask, logo_file: str = ""):
             rgba = LF.load_logo_rgba(name)
             if rgba is not None:
                 return rgba
-            _log(f"logo file could not be read (logo skipped): {name}")
+            _log(f"logo file could not be read (logo skipped): {name} "
+                 f"(logo_file must be a path inside ComfyUI's input directory)")
         except Exception as e:                            # noqa: BLE001
             _log(f"logo file raised (logo skipped): {type(e).__name__}: {e}")
     return None

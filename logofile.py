@@ -10,17 +10,34 @@ logo 文件读取
   - 连线入口仍然保留（`logo` / `logo_mask`），显式接线时优先用连线的图，
     这样需要做动态 logo（比如跟着模型输出变）的流程也不受限。
 
-安全：只允许解析进 ComfyUI input 目录下的路径。
-`folder_paths.get_annotated_filepath` 与 `get_full_path` 自带越界校验，
-所以外部传 `../../windows/system32/...` 是读不到的。
+安全约定（v1.4.3 起）
+---------------------
+``logo_file`` 同样是**用户可控**的 widget —— 任何工作流都能往里塞任意字符串。
+所以它一律只按「ComfyUI input 目录内的相对路径」解析：绝对路径 / 盘符 / UNC、
+含 ``..`` 的路径一律拒绝，realpath + commonpath 校验必须落在 input 目录内。
+
+判定本身在 :mod:`pathguard`（``font_file`` 走的是同一套），**不再依赖
+``folder_paths`` 的校验**：那层围栏是较新版本才补上的，而 ``get_full_path``
+只靠 ``os.path.relpath`` 的归一化副作用 —— 把安全语义外包给宿主，等于随
+ComfyUI 版本升降级而变，这正是这里要避免的。
+
+不依赖 ComfyUI（拿不到 ``folder_paths`` 时一律返回 None），可独立测试。
 """
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 import numpy as np
+
+try:                       # 包内相对导入（ComfyUI 加载时）
+    from . import pathguard  # type: ignore[import-not-found]
+except ImportError:        # 独立运行 / 自测时按平铺模块导入
+    import pathguard
+
+# ComfyUI 的注解写法是**后缀**加一个空格：`logo.png [input]`。
+# 面板不使用它（面板只写纯相对名），但手工搭的工作流可能带，收下并归一化。
+_ANNOTATION_SUFFIX = "[input]"
 
 
 def input_dir() -> Optional[str]:
@@ -37,51 +54,21 @@ def input_dir() -> Optional[str]:
 
 def resolve_path(name: str) -> Optional[str]:
     """
-    把面板给的文件名解析成实际存在的绝对路径；解析不出来返回 None。
+    把面板给的文件名解析成实际存在的绝对路径；解析不出来（含越界）返回 None。
 
-    三种写法都接受：`logo.png` / `sub/logo.png` / `[input]logo.png`。
+    接受：``logo.png`` / ``sub/logo.png`` / ``logo.png [input]``（相对 input 目录）
+    拒绝：绝对路径、盘符、UNC、含 ``..`` 的路径，以及 realpath 后落在 input 之外
+          的一切路径（符号链接 / 目录联接同样拦下）。
     """
-    name = (name or "").strip().replace("\\", "/")
+    name = (name or "").strip().strip('"').strip("'").replace("\\", "/")
+    if name.endswith(_ANNOTATION_SUFFIX):
+        name = name[: -len(_ANNOTATION_SUFFIX)].strip()
     if not name:
         return None
-    # 面板只应传相对名；挡掉绝对路径与非 input 前缀，少一层风险
-    if os.path.isabs(name):
-        return _offline_abs(name)
-    if name.startswith("[") and not name.startswith("[input]"):
+    base = input_dir()
+    if not base:
         return None
-
-    try:
-        import folder_paths
-    except Exception:                                          # noqa: BLE001
-        return _offline_relative(name)
-
-    try:
-        p = folder_paths.get_annotated_filepath(name)
-        if p and os.path.isfile(p):
-            return p
-    except Exception:                                          # noqa: BLE001
-        pass
-    try:
-        p = folder_paths.get_full_path("input", name)
-        if p and os.path.isfile(p):
-            return p
-    except Exception:                                          # noqa: BLE001
-        pass
-    return None
-
-
-def _offline_abs(name: str) -> Optional[str]:
-    """没有 ComfyUI 时（离线自测）才允许绝对路径，方便跑脚本验证。"""
-    try:
-        import folder_paths  # noqa: F401
-        return None                                        # 有 ComfyUI 就不放行
-    except Exception:                                      # noqa: BLE001
-        return name if os.path.isfile(name) else None
-
-
-def _offline_relative(name: str) -> Optional[str]:
-    p = os.path.abspath(name)
-    return p if os.path.isfile(p) else None
+    return pathguard.inside(base, name)
 
 
 def load_logo_rgba(name: str) -> Optional[np.ndarray]:

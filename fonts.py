@@ -11,12 +11,9 @@ comfyui-videomark 字体解析
 安全约定（v1.4.2 起）
 ---------------------
 ``font_file`` 是**用户可控**的 widget —— 任何工作流都能往里塞任意字符串。
-所以它一律只按「ComfyUI input 目录内的相对路径」解析：
-
-  * 绝对路径 / 盘符 / UNC 开头  → 拒绝
-  * 含 ``..`` 段的路径          → 拒绝
-  * 拼出来的路径先 realpath，再用 ``commonpath`` 校验必须落在 input 目录内
-    （realpath 会解开符号链接，软链同样逃不出去）
+所以它一律只按「ComfyUI input 目录内的相对路径」解析：绝对路径 / 盘符 / UNC、
+含 ``..`` 的路径一律拒绝，realpath + commonpath 校验必须落在 input 目录内
+（软链与目录联接也逃不出去）。判定本身在 :mod:`pathguard`，与 ``logo_file`` 共用同一套。
 
 这样一来，这个参数再也不能当成「读任意文件」的入口。
 想用自己的字体，把文件丢进 ``ComfyUI/input/fonts/`` —— 它会自动出现在下拉框里，
@@ -29,11 +26,15 @@ comfyui-videomark 字体解析
 from __future__ import annotations
 
 import os
-import re
 import sys
 from typing import Dict, List, Optional, Tuple
 
 from PIL import ImageFont
+
+try:                       # 包内相对导入（ComfyUI 加载时）
+    from . import pathguard  # type: ignore[import-not-found]
+except ImportError:        # 独立运行 / 自测时按平铺模块导入
+    import pathguard
 
 # ---------------------------------------------------------------------
 # 候选字体（按优先级排序）。值里的文件名在 Windows 上是大小写不敏感的，
@@ -117,21 +118,6 @@ def user_font_dir() -> Optional[str]:
     return d if os.path.isdir(d) else None
 
 
-def _inside(base: str, rel: str) -> Optional[str]:
-    """把 ``rel`` 解析成 base 之内的真实文件路径；越界一律返回 None。"""
-    parts = [p for p in re.split(r"[\\/]+", rel) if p not in ("", ".")]
-    if not parts or any(p == ".." for p in parts):
-        return None
-    base_real = os.path.realpath(base)
-    cand = os.path.realpath(os.path.join(base_real, *parts))
-    try:
-        if os.path.commonpath([cand, base_real]) != base_real:
-            return None
-    except ValueError:                      # 不同盘符，commonpath 会抛
-        return None
-    return cand if os.path.isfile(cand) else None
-
-
 def custom_font_path(font_file: str) -> Optional[str]:
     """
     把 ``font_file`` 解析成 input 目录内的字体文件路径。
@@ -143,15 +129,10 @@ def custom_font_path(font_file: str) -> Optional[str]:
     name = (font_file or "").strip().strip('"').strip("'")
     if not name:
         return None
-    # 绝对路径 / 盘符 / UNC —— 注意 POSIX 上 isabs("D:/x") 为假，所以 splitdrive 也得查
-    if os.path.isabs(name) or os.path.splitdrive(name)[0] or name[0] in ("\\", "/"):
-        return None
-    if any(p == ".." for p in re.split(r"[\\/]+", name)):
-        return None
     base = input_directory()
     if not base:
         return None
-    return _inside(base, name)
+    return pathguard.inside(base, name)
 
 
 # ---------------------------------------------------------------------

@@ -83,6 +83,11 @@ MiniMax H3、Wan、LTX、Hunyuan、VHS、AnimateDiff 这些出帧流程都能直
 点「上传 Logo」选一张 PNG，自动落到 ComfyUI 的 `input` 目录并记进 `logo_file` 参数。
 带 alpha 通道的 PNG 会完整保留透明区域。
 
+`logo_file` 只接受 **`input` 目录内的相对路径**（面板上传时写的就是这种，如 `logo.png`、
+`sub/logo.png`）。手填绝对路径、带盘符、或含 `..` 的路径会被拒绝 —— 这是有意的限制：
+`logo_file` 是工作流可以任意赋值的参数，放开就等于给了它一个"读机器上任意文件"的入口。
+`font_file` 同理。
+
 也照旧可以把 `LoadImage` 的 IMAGE 接到 `logo` 输入口 —— **连线优先于上传的文件**，
 所以需要动态 logo（比如跟着模型输出变）的流程不受影响。
 
