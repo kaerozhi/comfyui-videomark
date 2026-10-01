@@ -570,7 +570,13 @@ comfyui-videomark/
 
 ## 安装
 
-**方式一：Comfy Registry**
+**方式一：ComfyUI Manager**
+
+在 ComfyUI 的 Manager 面板里搜 `comfyui-videomark`（搜 `VideoMark` 也行），点 Install。
+节点已收录进 [ComfyUI-Manager 的节点清单](https://github.com/Comfy-Org/ComfyUI-Manager)，
+所以 Manager 里能直接搜到；装完重启 ComfyUI。
+
+**方式二：Comfy Registry**
 
 ```bash
 comfy node install comfyui-videomark
@@ -578,7 +584,7 @@ comfy node install comfyui-videomark
 
 或直接到 [registry.comfy.org/nodes/comfyui-videomark](https://registry.comfy.org/nodes/comfyui-videomark) 点安装。
 
-**方式二：手动 clone**
+**方式三：手动 clone**
 
 ```bash
 cd ComfyUI/custom_nodes
